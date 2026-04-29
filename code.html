@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<nav class="navbar">
+  <div class="logo">Andres Wallace</div>
+
+  <div class="links">
+    <a href="index.html">About</a>
+    <a href="projects.html">Projects</a>
+    <a href="resume.html">Resume</a>
+    <a href="code.html">Code Samples</a>
+  </div>
+</nav>
+
+<section>
+  <h2>Code Samples</h2>
+
+  <div class="project">
+    <h3>Neon Breakline Character Controller</h3>
+
+    <pre><code>
+using System.Collections;
+using Unity.Cinemachine;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+public class PlayerController : MonoBehaviour
+{
+    //RULE: the player ALWAYS moves forward
+    //There is NO input that stops or reverses movement
+
+    public static PlayerController Instance;
+
+    [Header("Player Stats")]
+    public bool advance = true;
+    public bool levelFinished = false;
+    public int maxHealth = 3;
+    public int currentHealth;
+    [HideInInspector] public enum SpeedTier { Base, Lv1, Lv2, Lv3 }
+    public SpeedTier speedTier = SpeedTier.Base;
+    public bool playerDied = false;
+
+    [Header("Forward Movement Settings")]
+    public float baseSpeed = 5f;
+    public float lv1Speed = 7f;
+    public float lv2Speed = 9f;
+    public float lv3Speed = 12f;
+
+    public float baseAnimSpeed = .8f;
+    public float lv1AnimSpeed = 1f;
+    public float lv2AnimSpeed = 1.1f;
+    public float lv3AnimSpeed = 1.2f;
+
+    [Header("Jump Settings")]
+    public float jumpForce = 8f;
+    public Transform groundCheck;
+    [SerializeField] private float groundCheckY = 0.2f;
+    [SerializeField] private float groundCheckX = 0.5f;
+    public LayerMask groundLayer;
+    public bool isGrounded;
+    
+    [Header("Jump Assist")]
+    [SerializeField] private float coyoteTime = 0.1f;
+    [SerializeField] private float jumpBufferTime = 0.1f;
+    private float coyoteTimeCounter;
+    private float jumpBufferCounter;
+
+    [Header("Slide Settings")]
+    public float slideDuration = 1f;
+
+    [Header("Attack Settings")]
+    public GameObject attackHitbox;
+    public float attackCooldown = 0.25f;
+    private float lastAttackTime;
+    public GameObject slashFX;
+    [SerializeField] private float attackBufferTime = .1f;
+    private float attackBufferCounter;
+
+    [Header("Parry Settings")]
+    public GameObject parryHitbox;
+    public float parryAnimDuration = 0.12f;
+    public float parrySpeedMultiplier = 0.5f;
+
+    [Header("Pushback Settings")]
+    public float pushbackForce = 6f;
+    public float pushbackDuration = 0.2f;
+    private Coroutine pushbackCoroutine;
+
+    [Header("Hitstop Settings")]
+    public float hitstopDuration = 0.07f;
+    public float parryHitstopDuration = 0.1f;
+    public bool isInHitstop = false;
+
+    [Header("Screen Shake Settings")]
+    public CinemachineImpulseSource wallHitImpulseSource;
+    public CinemachineImpulseSource parryImpulseSource;
+    public CinemachineImpulseSource attackImpulseSource;
+
+    [Header("Camera Settings")]
+    public float baseFOV = 40f;
+    public float lv1FOV = 41f;
+    public float lv2FOV = 43f;
+    public float lv3FOV = 45f;
+
+    [Header("Particles")]
+    public ParticleSystem parryParticles;
+    public ParticleSystem jumpParticles;
+    public ParticleSystem bloodParticles;
+    
+
+    #region Input Actions
+    private PlayerInput playerInput;
+    private InputAction jumpAction;
+    private InputAction attackAction;
+    private InputAction parryAction;
+    private InputAction crouchAction;
+#endregion
+    #region Input Bools
+    public bool JumpJustPressed { get; private set; }
+    public bool JumpBeingHeld { get; private set; }
+    public bool JumpReleased { get; private set; }
+    public bool AttackInput { get; private set; }
+    public bool ParryInput { get; private set; }
+    public bool CrouchInput { get; private set; }
+    #endregion
+
+
+    [HideInInspector] public Rigidbody2D rb;
+    [HideInInspector] public Animator anim;
+    [HideInInspector] public AudioSource audsrc;
+    [HideInInspector] public PlayerStates pState;
+    [HideInInspector] public AudioManager audioManager;
+
+
+    void Awake()
+    {
+
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Instance = this;
+        }
+        playerInput = GetComponent<PlayerInput>();
+        SetupInputActions();
+
+        rb = GetComponent<Rigidbody2D>();
+        anim = GetComponent<Animator>();
+        audsrc = GetComponent<AudioSource>();
+        pState = GetComponent<PlayerStates>();
+    }
+
+    void Start()
+    {
+        ToggleCursorOff();
+        audioManager = AudioManager.Instance;
+        currentHealth = maxHealth;
+        PlayerHUDManager.Instance.UpdateHealthUI();
+        PlayerHUDManager.Instance.UpdateSpeedTierUI();
+    }
+
+    private void SetupInputActions()
+    {
+        jumpAction = playerInput.actions["Jump"];
+        attackAction = playerInput.actions["Attack"];
+        parryAction = playerInput.actions["Parry"];
+        crouchAction = playerInput.actions["Crouch"];
+    }
+    public void GetInputs()
+    {
+        AttackInput = attackAction.WasPressedThisFrame();
+        ParryInput = parryAction.WasPressedThisFrame();
+        CrouchInput = crouchAction.IsPressed();
+        JumpJustPressed = jumpAction.WasPressedThisFrame();
+        JumpBeingHeld = jumpAction.IsPressed();
+        JumpReleased = jumpAction.WasReleasedThisFrame();
+    }
+
+    void Update()
+    {
+        if (GameManager.Instance.gameIsPaused || levelFinished || playerDied) return;
+
+        CheckGround();
+        GetInputs();
+        HandleJump();
+        Slide();
+        HandleAttack();
+        Parry();
+    }
+
+    void FixedUpdate()
+    {
+        if (GameManager.Instance.gameIsPaused || levelFinished) return;
+        
+        if (advance && !playerDied)
+        {
+            rb.linearVelocity = new Vector2(GetSpeedFromTier(), rb.linearVelocityY);
+        }
+    }
+
+    private void Jump()
+    {
+        if (!pState.jumping && !pState.sliding && !pState.parrying)
+        {
+            pState.jumping = true;
+            anim.SetBool("Jumping", true);
+            jumpParticles.Play();
+            audioManager.PlayRandomJumpSound();
+            rb.linearVelocity = new Vector2(rb.linearVelocityX, jumpForce);
+        }
+    }
+
+    private void HandleJump()
+    {
+        UpdateCoyoteTime();
+        UpdateJumpBuffer();
+        TryJump();
+    }
+    private void UpdateCoyoteTime()
+    {
+        if (isGrounded)
+        {
+            coyoteTimeCounter = coyoteTime;
+        }
+        else
+        {
+            coyoteTimeCounter -= Time.deltaTime;
+        }
+    }
+    private void UpdateJumpBuffer()
+    {
+        if (JumpJustPressed)
+            jumpBufferCounter = jumpBufferTime;
+        else
+            jumpBufferCounter -= Time.deltaTime;
+    }
+    private void TryJump()
+    {
+        if (jumpBufferCounter > 0f && coyoteTimeCounter > 0f)
+        {
+            Jump();
+            jumpBufferCounter = 0f;
+            coyoteTimeCounter = 0f;
+        }
+    }
+
+    private void Slide()
+    {
+        if (CrouchInput && isGrounded && !pState.sliding && !pState.attacking && !pState.parrying)
+        {
+            StartCoroutine(PerformSlide());
+        }
+    }
+
+    private IEnumerator PerformSlide()
+    {
+        pState.sliding = true;
+        anim.SetTrigger("Slide");
+        audioManager.PlaySFX(audioManager.slideSound);
+        yield return new WaitForSeconds(slideDuration);
+        pState.sliding = false;
+    }
+
+    private void HandleAttack()
+    {
+        UpdateAttackBuffer();
+        TryAttack();
+    }
+
+    private bool Attack()
+    {
+        if (Time.time >= lastAttackTime + attackCooldown && !pState.attacking && !pState.sliding && !pState.parrying)
+        {
+            pState.attacking = true;
+            anim.SetTrigger("Attack");
+            audioManager.PlayRandomAttackSound();
+
+            lastAttackTime = Time.time;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void UpdateAttackBuffer()
+    {
+        if (AttackInput)
+            attackBufferCounter = attackBufferTime;
+        else
+            attackBufferCounter -= Time.deltaTime;
+    }
+
+    private void TryAttack()
+    {
+        if (attackBufferCounter > 0f)
+        {
+            if (Attack())
+            {
+                attackBufferCounter = 0f;
+            }
+        }
+    }
+
+    private void Parry()
+    {
+        if (ParryInput && !pState.parrying && !pState.attacking && !pState.sliding && !pState.beingPushedBack)
+        {
+            StartCoroutine(ParryRoutine());
+        }
+        
+    }
+
+    private IEnumerator ParryRoutine()
+    {
+        if (pState.beingPushedBack)
+            yield break;
+
+        pState.parrying = true;
+        anim.SetTrigger("Parry");
+        audioManager.PlaySFX(audioManager.parrySound);
+        float originalSpeed = GetSpeedFromTier();
+        advance = false;
+        rb.linearVelocity = new Vector2(originalSpeed * parrySpeedMultiplier, rb.linearVelocityY);
+        yield return new WaitForSeconds(parryAnimDuration);
+        if (CanAdvance())
+        {
+            advance = true;
+        }
+        pState.parrying = false;
+    }
+
+    public void OnSuccessfulParry()
+    {
+        pState.parrying = false;
+        anim.SetTrigger("ParrySuccess");
+        parryParticles.Play();
+        audioManager.PlayRandomParriedSound();
+        StartCoroutine(TemporaryInvincibility(0.05f)); // Set Based on animation
+        GainSpeedTier();
+        StartCoroutine(Hitstop(parryHitstopDuration));
+        StartCoroutine(SmallSpeedBoost());
+        parryImpulseSource.GenerateImpulse();
+    }
+
+    public IEnumerator TemporaryInvincibility(float duration)
+    {
+        pState.invincible = true;
+        yield return new WaitForSeconds(duration);
+        pState.invincible = false;
+    }
+
+    public IEnumerator SmallSpeedBoost()
+    {
+        float originalSpeed = GetSpeedFromTier();
+        advance = false;
+        rb.linearVelocity = new Vector2(originalSpeed * 1.5f, rb.linearVelocityY);
+        yield return new WaitForSeconds(0.2f);
+        if (CanAdvance())
+        {
+            advance = true;
+        }
+    }
+
+    public float GetSpeedFromTier()
+    {
+        switch (speedTier)
+        {
+            case SpeedTier.Lv1:
+                return lv1Speed;
+            case SpeedTier.Lv2:
+                return lv2Speed;
+            case SpeedTier.Lv3:
+                return lv3Speed;
+            default:
+                return baseSpeed;
+        }
+    }
+
+    private void CheckGround()
+    {
+        isGrounded = Physics2D.Raycast(groundCheck.position, Vector2.down, groundCheckY, groundLayer)
+            || Physics2D.Raycast(groundCheck.position + new Vector3(groundCheckX, 0, 0), Vector2.down, groundCheckY, groundLayer)
+            || Physics2D.Raycast(groundCheck.position + new Vector3(-groundCheckX, 0, 0), Vector2.down, groundCheckY, groundLayer);
+
+        if (isGrounded && rb.linearVelocityY <= 0)
+        {
+            pState.jumping = false;
+            
+            anim.SetBool("Jumping", false);
+            anim.SetBool("Falling", false);
+        }
+        else if (!isGrounded)
+        {
+            anim.SetBool("Falling", true);
+        }
+
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (groundCheck == null) return;
+
+        // Draw the three raycast lines in the Scene view
+        Gizmos.color = Color.yellow;
+
+        Vector3 center = groundCheck.position;
+        Vector3 right = center + new Vector3(groundCheckX, 0, 0);
+        Vector3 left = center + new Vector3(-groundCheckX, 0, 0);
+
+        Gizmos.DrawLine(center, center + Vector3.down * groundCheckY);
+        Gizmos.DrawLine(right, right + Vector3.down * groundCheckY);
+        Gizmos.DrawLine(left, left + Vector3.down * groundCheckY);
+    }
+
+    public void GainSpeedTier()
+    {
+        if (playerDied) return;
+        if (speedTier < SpeedTier.Lv3)
+        {
+            speedTier++;
+            PlayerHUDManager.Instance.UpdateSpeedTierUI();
+            audioManager.PlayTierUpPitched(speedTier);
+        }
+    }
+    public void LoseSpeedTier()
+    {
+        if (playerDied) return;
+        if (speedTier > SpeedTier.Base)
+        {
+            if (pState.invincible) return;
+
+            audioManager.PlayTierDownPitched(speedTier);
+            speedTier--;
+            PlayerHUDManager.Instance.UpdateSpeedTierUI();
+        }
+    }
+
+    public void TakeDamage(int damage)
+    {
+        if (pState.invincible || playerDied) return;
+        
+        currentHealth -= damage;
+        PlayerHUDManager.Instance.UpdateHealthUI();
+
+        if (currentHealth <= 0)
+        {
+            Die();
+        }
+    }
+
+    private void Die()
+    {
+        if (playerDied) return;
+        StartCoroutine(DeathRoutine());
+    }
+
+    private IEnumerator DeathRoutine()
+    {
+        audioManager.PlayRandomDeathSound();
+        advance = false;
+        playerDied = true;
+        rb.linearVelocity = new Vector2(0,0);
+        anim.Play("PlayerDeath");
+        yield return new WaitForSeconds(2f);
+        GameManager.Instance.RestartLevelAfterFade();
+        
+    }
+
+    public void ApplyPushback()
+    {
+        if (pState.invincible) return;
+        
+        audioManager.PlaySFX(audioManager.hitWallSound);
+        pState.beingPushedBack = true;
+        anim.SetTrigger("Hit");
+        rb.linearVelocity = Vector2.zero;
+        rb.AddForce(new Vector2(-pushbackForce, pushbackForce * 0.5f), ForceMode2D.Impulse);
+
+        LoseSpeedTier();
+        wallHitImpulseSource.GenerateImpulse();
+        StartCoroutine(Hitstop(hitstopDuration));
+        
+        if (pushbackCoroutine != null)
+        {
+            StopCoroutine(pushbackCoroutine);
+        }
+        pushbackCoroutine = StartCoroutine(ContinueAfterPushback(pushbackDuration));
+    }
+
+    public IEnumerator ContinueAfterPushback(float delay)
+    {
+        advance = false;
+        yield return new WaitForSeconds(delay);
+        advance = true;
+        pState.beingPushedBack = false;
+    }
+    IEnumerator Hitstop(float time)
+    {
+        if (isInHitstop)
+            yield break;
+
+        isInHitstop = true;
+
+        //float originalTimeScale = Time.timeScale;
+        Time.timeScale = 0f;
+
+        yield return new WaitForSecondsRealtime(time);
+
+        if (!GameManager.Instance.gameIsPaused)
+        {
+            Time.timeScale = /*originalTimeScale*/ 1f;
+        }
+        isInHitstop = false;
+    }
+
+    public void DoHitStop(float time)
+    {
+        StartCoroutine(Hitstop(time));
+    }
+
+    public void DoAttackScreenShake()
+    {
+        attackImpulseSource.GenerateImpulse();
+    }
+
+    public void SpawnSlashFX()
+    {
+        float randomDir = Random.Range(-4,4);
+        Quaternion rotation = Quaternion.Euler(0, 0, randomDir);
+        Vector3 spawnPos = transform.position;
+        spawnPos.y += Random.Range(-.15f, .15f);
+
+        GameObject slash = Instantiate(slashFX, spawnPos, rotation);
+
+        float randomScale = Random.Range(.9f, 1.1f);
+        slash.transform.localScale *= randomScale;
+    }
+
+    public void SpawnBloodFX(Vector3 position)
+    {
+        ParticleSystem particles = Instantiate(bloodParticles, position, Quaternion.identity);
+        Destroy(particles.gameObject, particles.main.duration + particles.main.startLifetime.constantMax);
+    }
+
+
+    public void ChangeCameraFov()
+    {
+        baseFOV = CameraManager.Instance.normalCameraFov;
+        switch (speedTier)
+        {
+            case SpeedTier.Lv1:
+                CameraManager.Instance.currentCamera.Lens.FieldOfView = lv1FOV;
+                anim.SetFloat("RunSpeed", lv1AnimSpeed);
+                break;
+            case SpeedTier.Lv2:
+                CameraManager.Instance.currentCamera.Lens.FieldOfView = lv2FOV;
+                anim.SetFloat("RunSpeed", lv2AnimSpeed);
+                break;
+            case SpeedTier.Lv3:
+                CameraManager.Instance.currentCamera.Lens.FieldOfView = lv3FOV;
+                anim.SetFloat("RunSpeed", lv3AnimSpeed);
+                break;
+            default:
+                CameraManager.Instance.currentCamera.Lens.FieldOfView = baseFOV;
+                anim.SetFloat("RunSpeed", baseAnimSpeed);
+                break;
+        }
+    }
+
+    public void EnableAttackHitbox()
+    {
+        attackHitbox.SetActive(true);
+    }
+
+    public void DisableAttackHitbox()
+    {
+        pState.attacking = false;
+        attackHitbox.SetActive(false);
+    }
+
+    public void EnableParryHitbox()
+    {
+        parryHitbox.SetActive(true);
+    }
+
+    public void DisableParryHitbox()
+    {
+        pState.parrying = false;
+        parryHitbox.SetActive(false);
+    }
+
+    public bool CanAdvance()
+    {
+        return !pState.beingPushedBack; // Add anythyng needed
+    }
+
+    public void PlayFootStepSound()
+    {
+        audioManager.PlayRandomFootStepSound();
+    }
+
+    /// UTILITIES
+
+    public void ToggleCursorOn()
+    {
+        if (playerInput.currentControlScheme == "Controller") return;
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
+    public void ToggleCursorOff()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+}
+    </code></pre>
+
+    <p class="project-desc">
+      This was the entire code for the player in Neon Breakline, you can find more code samples here : <a href="https://github.com/WallzDev/Code-Portfolio/tree/main/ProjectForward/Scripts">Neon Breakline Code Samples</a>
+    </p>
+  </div>
+</section>
