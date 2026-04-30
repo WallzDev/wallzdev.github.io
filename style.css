@@ -6,7 +6,7 @@
   padding: 20px 40px;
   position: sticky;
   top: 0;
-  background: rgba(15, 17, 21, 0.8);
+  background: rgba(40, 44, 53, 0.8);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -41,7 +41,7 @@ body {
 }
 
 section {
-  max-width: 900px;
+  max-width: 1200px;
   margin: auto;
   padding: 100px 24px;
 }
@@ -99,7 +99,7 @@ h2 {
 }
 
 .project-desc {
-  color: #cfcfcf;
+  color: #e4e4e4;
   margin-bottom: 20px;
 }
 
@@ -113,7 +113,7 @@ h2 {
 
 .project-section ul {
   padding-left: 18px;
-  color: #cfcfcf;
+  color: #e4e4e4;
 }
 
 .project-section li {
@@ -131,7 +131,7 @@ h2 {
 }
 
 .contact p {
-  color: #cfcfcf;
+  color: #ffffff;
 }
 
 a {
@@ -161,4 +161,34 @@ a {
   width: 100%;
   height: 800px;
   border: none;
+}
+
+.resume-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.resume-controls button {
+  background: #1f2228;
+  color: white;
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.resume-wrapper {
+  width: 100%;
+  height: 800px;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.resume-wrapper iframe {
+  width: 100%;
+  height: 100%;
+  transform-origin: top center;
 }

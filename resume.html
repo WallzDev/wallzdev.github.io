@@ -26,11 +26,38 @@
 
   <p>You can view or download my resume below.</p>
 
-  <div class="resume-container">
-    <iframe src="AndresWallaceResume.pdf"></iframe>
+  <div class="resume-controls">
+    <button onclick="zoomOut()">-</button>
+    <span id="zoomLevel">100%</span>
+    <button onclick="zoomIn()">+</button>
+  </div>
+
+  <div class="resume-wrapper">
+    <iframe id="resumeFrame" src="AndresWallaceResume.pdf"></iframe>
   </div>
 
   <a href="AndresWallaceResume.pdf" class="resume-btn" download>
     Download PDF
   </a>
 </section>
+
+<script>
+    let zoom = 1;
+    const frame = document.getElementById("resumeFrame");
+    const zoomText = document.getElementById("zoomLevel");
+
+    function zoomIn() {
+      zoom += 0.1;
+      applyZoom();
+    }
+
+    function zoomOut() {
+      zoom = Math.max(0.5, zoom - 0.1);
+      applyZoom();
+    }
+
+    function applyZoom() {
+      frame.style.transform = `scale(${zoom})`;
+      zoomText.textContent = Math.round(zoom * 100) + "%";
+    }
+  </script>
