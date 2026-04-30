@@ -23,10 +23,17 @@
 <section>
   <h2>Code Samples</h2>
 
-  <div class="project">
-    <h3>Neon Breakline Character Controller</h3>
+  <div class="code-grid">
 
-    <pre><code>
+    <div class="code-card" onclick="toggleCard(this)">
+      <h3>Character Controller</h3>
+      <p class="code-subtitle">Neon Breakline</p>
+      <p>
+        Full code for the Character Controller in Neon Breakline (Careful its around 700 lines long)
+      </p>
+
+      <div class="code-content">
+        <pre><code>
 using System.Collections;
 using Unity.Cinemachine;
 using UnityEngine;
@@ -151,13 +158,13 @@ public class PlayerController : MonoBehaviour
         {
             Instance = this;
         }
-        playerInput = GetComponent<PlayerInput>();
+        playerInput = GetComponent();
         SetupInputActions();
 
-        rb = GetComponent<Rigidbody2D>();
-        anim = GetComponent<Animator>();
-        audsrc = GetComponent<AudioSource>();
-        pState = GetComponent<PlayerStates>();
+        rb = GetComponent();
+        anim = GetComponent();
+        audsrc = GetComponent();
+        pState = GetComponent();
     }
 
     void Start()
@@ -626,9 +633,558 @@ public class PlayerController : MonoBehaviour
     }
 
 }
-    </code></pre>
-  </div>
-  <p class="project-desc">
-      This was the entire code for the player in Neon Breakline, you can find more code samples here : <a href="https://github.com/WallzDev/Code-Portfolio/tree/main/ProjectForward/Scripts">Neon Breakline Code Samples</a>
+        </code></pre>
+      </div>
+    </div>
+
+    <div class="code-card" onclick="toggleCard(this)">
+      <h3>Game Manager</h3>
+      <p class="code-subtitle">Neon Breakline</p>
+      <p>
+        Handles game states and scene changes.
+      </p>
+
+      <div class="code-content">
+        <pre><code>
+using System;
+using System.Collections;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+
+public class GameManager : MonoBehaviour
+{
+    public static GameManager Instance { get; private set; }
+
+    [SerializeField] private GameObject pauseMenu;
+    [SerializeField] private Button pauseMenuButton;
+    public bool gameIsPaused;
+
+    private PlayerInput playerInput;
+    private InputAction pauseAction;
+
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Instance = this;
+        }
+        Time.timeScale = 1f;
+
+        playerInput = FindFirstObjectByType<PlayerInput>();
+        pauseAction = playerInput.actions["Pause"];
+    }
+
+    private void Update()
+    {
+        if (pauseAction.WasPressedThisFrame())
+        {
+            TogglePause();
+        }
+
+    }
+
+    public void TogglePause()
+    {
+        if (PlayerController.Instance.pState.inTutorial || PlayerController.Instance.levelFinished) return;
+
+        if (gameIsPaused)
+        ResumeGame();
+        else
+        PauseGame();
+    }
+
+    public void PauseGame()
+    {
+        Time.timeScale = 0f;
+        gameIsPaused = true;
+        pauseMenu.SetActive(true);
+        pauseMenuButton.Select();
+    }
+
+    public void ResumeGame()
+    {
+        Time.timeScale = 1f;
+        gameIsPaused = false;
+        pauseMenu.SetActive(false);
+    }
+
+    public void ExitToMainMenu()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    public void RestartLevel()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+}
+        </code></pre>
+      </div>
+    </div>
+
+<div class="code-card" onclick="toggleCard(this)">
+      <h3>Save Encryption</h3>
+      <p class="code-subtitle">Neon Breakline</p>
+      <p>
+        Helped encrypt the save data for Neon Breakline so it couldn't be easily editable.
+      </p>
+
+      <div class="code-content">
+        <pre><code>
+using System;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using UnityEngine;
+
+public static class EncryptionUtility
+{
+    private static readonly string key = "ProjectForwardWallaceKey"; //24 chars
+    private static readonly string iv = "ProjectForwardIV"; //16 chars
+
+    public static string Encrypt(string plainText)
+    {
+        using (Aes aes = Aes.Create())
+        {
+            aes.Key = Encoding.UTF8.GetBytes(key.Substring(0, 24));
+            aes.IV = Encoding.UTF8.GetBytes(iv.Substring(0, 16));
+
+            using (MemoryStream ms = new MemoryStream())
+            using (CryptoStream cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
+            using (StreamWriter sw = new StreamWriter(cs))
+            {
+                sw.Write(plainText);
+                sw.Close();
+                return Convert.ToBase64String(ms.ToArray());
+            }
+        }
+    }
+
+    public static string Decrypt(string cipherText)
+    {
+        using (Aes aes = Aes.Create())
+        {
+            aes.Key = Encoding.UTF8.GetBytes(key.Substring(0, 24));
+            aes.IV = Encoding.UTF8.GetBytes(iv.Substring(0, 16));
+
+            byte[] buffer = Convert.FromBase64String(cipherText);
+
+            using (MemoryStream ms = new MemoryStream(Convert.FromBase64String(cipherText)))
+            using (CryptoStream cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read))
+            using (StreamReader sr = new StreamReader(cs))
+            {
+                return sr.ReadToEnd();
+            }
+        }
+    }
+}
+        </code></pre>
+      </div>
+    </div>
+
+<div class="code-card" onclick="toggleCard(this)">
+      <h3>Dialogue Cutscene System</h3>
+      <p class="code-subtitle">Thousand Paths (Metroidvania)</p>
+      <p>
+        Handled Dialogue Scenes in my Metroidvania Project.
+      </p>
+
+      <div class="code-content">
+        <pre><code>
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEditor.Rendering;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class CutsceneSystem : MonoBehaviour
+{
+    [Header("Core")]
+    public static CutsceneSystem instance;
+    public AudioSource audioSource;
+
+    [Header("Dialogue")]
+    public bool isInDialogue;
+    public DialogueLines[] lines;
+    public int currentLine;
+    public float ogTextSpeed;
+    public float textSpeed;
+    [SerializeField][TextArea] private string[] textInfo;
+
+    [Header("UI")]
+    public GameObject dialogueBox;
+    public TMP_Text currentText;
+    public TMP_Text currentNameText;
+    public Image characterImage;
+    public Image indicator;
+    [HideInInspector] public Animator indicatorAnim;
+
+    [Header("CharacterCheck")]
+    public bool solveigTalking;
+    public bool asaTalking;
+    public bool kurohaTalking;
+    public bool ichikaTalking;
+    public bool kingTalking;
+    public bool mayukaTalking;
+    public bool mikaelTalking;
+
+
+    private Queue<DialogueLines> dialogueQueue;
+    private bool isScrolling;
+
+    private void Awake()
+    {
+        if (instance != null && instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            instance = this;
+        }
+        dialogueQueue = new Queue<DialogueLines>();
+        ogTextSpeed = textSpeed;
+        indicatorAnim = indicator.GetComponent<Animator>();
+        this.gameObject.SetActive(false);
+    }
+
+    public void Update()
+    {
+        if (!isInDialogue) return;
+
+        if (textSpeed > ogTextSpeed)
+        {
+            textSpeed = ogTextSpeed;
+        }
+
+        if (Input.GetButtonDown("Submit") || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Mouse0))
+        {
+            DisplayNextLine();
+            if (isScrolling)
+            {
+                textSpeed /= 7;
+            }
+        }
+        else if (Input.GetButtonUp("Submit") || Input.GetKeyUp(KeyCode.Space) || Input.GetKeyUp(KeyCode.Mouse0))
+        {
+            textSpeed *= 7;
+        }
+    }
+
+    public void StartDialogue(DialogueLines[] lines)
+    {
+        if (isInDialogue) return;
+
+        textSpeed = ogTextSpeed;
+        dialogueQueue.Clear();
+        foreach (var line in lines)
+        {
+            if (!PlayerController.Instance.playedDialogueIds.Contains(line.id))
+            {
+                dialogueQueue.Enqueue(line);
+
+                if (line.deleteAfterPlay)
+                {
+                    PlayerController.Instance.playedDialogueIds.Add(line.id);
+                }
+            }
+        }
+        isInDialogue = true;
+        PlayerController.Instance.pState.cantControl = true;
+        PlayerController.Instance.rb.velocity = new Vector3(0, 0, 0);
+        PlayerController.Instance.ReturnToIdle();
+        dialogueBox.SetActive(true);
+        DisplayNextLine();
+    }
+
+    public void DisplayNextLine()
+    {
+        if (isScrolling) return;
+
+        indicatorAnim.SetBool("End", false);
+        if (dialogueQueue.Count == 0)
+        {
+            EndDialogue();
+            return;
+        }
+        if (dialogueQueue.Count == 1)
+        {
+            indicatorAnim.SetBool("End",true);
+        }
+
+        var currentLine = dialogueQueue.Dequeue();
+        UpdateUI(currentLine);
+        PlayDialogueSound(currentLine);
+        StartCoroutine(ScrollText(currentLine.dialogueText));
+        
+        if (currentLine.action.GetPersistentEventCount() > 0)
+        {
+            currentLine.action.Invoke();
+        }
+    }
+
+    private void UpdateUI(DialogueLines line)
+    {
+        if (line.character.ToString() == "NONE")
+        {
+            currentNameText.text = "";
+            characterImage.sprite = line.GetCharacterPortrait();
+        }    
+        else
+        {
+            currentNameText.text = line.character.ToString();
+            characterImage.sprite = line.GetCharacterPortrait();
+        }
+    }
+    private IEnumerator ScrollText(string text)
+    {
+        indicatorAnim.SetTrigger("Scrolling");
+        isScrolling = true;
+        currentText.text = "";
+
+        foreach (char c in text)
+        {
+            currentText.text += c;
+            yield return new WaitForSeconds(textSpeed);
+        }
+
+        isScrolling = false;
+        if (indicatorAnim.GetBool("End") == false)
+        {
+            indicatorAnim.SetTrigger("Next");
+        }
+
+    }
+
+    private void PlayDialogueSound(DialogueLines line)
+    {
+        if (audioSource == null) return;
+
+        AudioClip clip = line.GetSoundEffect();
+        if (clip != null)
+        {
+            audioSource.PlayOneShot(clip);
+        }
+    }
+
+    public void EndDialogue()
+    {
+        dialogueBox.SetActive(false);
+        isInDialogue = false;
+        PlayerController.Instance.pState.cantControl = false;
+        this.gameObject.SetActive(false);
+    }
+}
+        </code></pre>
+      </div>
+    </div>
+
+<div class="code-card" onclick="toggleCard(this)">
+      <h3>Health Controller</h3>
+      <p class="code-subtitle">Neon Breakline</p>
+      <p>
+        Handled health UI and some other things like the economy HUD.
+      </p>
+
+      <div class="code-content">
+        <pre><code>
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class HealthController : MonoBehaviour
+{
+    PlayerController player;
+
+    private GameObject[] sakuraContainer;
+    private Image[] sakuraFilled;
+    public Transform sakuraParent;
+    public GameObject sakuraContainerPrefab;
+    public TextMeshProUGUI riceText;
+    public TextMeshProUGUI coinsText;
+    [SerializeField] public Animator riceCounter;
+    [SerializeField] public Animator coinsCounter;
+    public bool riceCollected;
+    public bool coinsCollected;
+
+    void Start()
+    {
+        player = PlayerController.Instance;
+        sakuraContainer = new GameObject[PlayerController.Instance.maxTotalHealth];
+        sakuraFilled = new Image[PlayerController.Instance.maxTotalHealth];
+
+        PlayerController.Instance.onHealthChangedCallback += UpdateSakuraHUD;
+        InstantiateSakuraContainers();
+        UpdateSakuraHUD();
+        UpdateMoneyHUD();
+    }
+
+    void SetSakuraContainer()
+    {
+        for (int i = 0; i < sakuraContainer.Length; i++)
+        {
+            if (i < PlayerController.Instance.maxHealth)
+            {
+                sakuraContainer[i].SetActive(true);
+            }
+            else
+            {
+                sakuraContainer[i].SetActive(false);
+            }
+        }
+    }
+
+    void SetFilledSakura()
+    {
+        for (int i = 0; i < sakuraFilled.Length; i++)
+        {
+            if (i < PlayerController.Instance.Health)
+            {
+                sakuraFilled[i].GetComponent<Animator>().SetBool("Filled", true);
+            }
+            else
+            {
+                sakuraFilled[i].GetComponent<Animator>().SetBool("Filled", false);
+            }
+        }
+    }
+
+    void InstantiateSakuraContainers()
+    {
+        for(int i = 0; i < PlayerController.Instance.maxTotalHealth; i++)
+        {
+            GameObject temp = Instantiate(sakuraContainerPrefab);
+            temp.transform.SetParent(sakuraParent, false);
+            sakuraContainer[i] = temp;
+            sakuraFilled[i] = temp.transform.Find("Flower").GetComponent<Image>();
+        }
+    }
+
+    void UpdateSakuraHUD()
+    {
+        SetSakuraContainer();
+        SetFilledSakura();
+    }
+
+    public void UpdateMoneyHUD()
+    {
+        if (riceCollected)
+        {
+            StartCoroutine(RiceCoroutine());
+        }
+        if (coinsCollected)
+        {
+            StartCoroutine(CoinsCoroutine());
+        }
+    }
+    public void UpdateMoneyHUDForKatana()
+    {
+        StartCoroutine(RiceCoroutine());
+        StartCoroutine(CoinsCoroutine());
+    }
+
+    public IEnumerator RiceCoroutine()
+    {
+        if (riceCounter.GetBool("Opened") == false)
+        {
+
+            riceCollected = false;
+            riceCounter.SetTrigger("Open");
+            riceCounter.SetBool("Opened", true);
+            riceText.text = player.riceOwned.ToString();
+            yield return new WaitForSeconds(3f);
+
+            if (!riceCounter.GetBool("Closing"))
+            {
+                riceCounter.SetBool("Closing", true);
+                riceCounter.SetTrigger("Close");
+                riceCounter.SetBool("Opened", false);
+                yield return new WaitForSeconds(.1f);
+                riceCounter.SetBool("Closing", false);
+            }
+        }
+        else
+        {
+            riceText.text = player.riceOwned.ToString();
+        }
+    }
+    public IEnumerator CoinsCoroutine()
+    {
+        if (coinsCounter.GetBool("Opened") == false)
+        {
+
+            coinsCollected = false;
+            coinsCounter.SetTrigger("Open");
+            coinsCounter.SetBool("Opened", true);
+            coinsText.text = player.coinsOwned.ToString();
+            yield return new WaitForSeconds(3f);
+
+            if (!coinsCounter.GetBool("Closing"))
+            {
+                coinsCounter.SetBool("Closing", true);
+                coinsCounter.SetTrigger("Close");
+                coinsCounter.SetBool("Opened", false);
+                yield return new WaitForSeconds(.1f);
+                coinsCounter.SetBool("Closing", false);
+            }
+        }
+        else
+        {
+            coinsText.text = player.coinsOwned.ToString();
+        }
+    }
+
+}
+        </code></pre>
+      </div>
+    </div>
+
+<div class="code-card" onclick="toggleCard(this)">
+      <h3>Professional Experience</h3>
+      <p class="code-subtitle">NDA</p>
+      <p>
+        Please check out this Github page to see some of the work I'm doing for a still in development 3D Puzzle Game with a small team.
+      </p>
+
+      <div class="code-content">
+        <pre><code>
+            <a href="https://github.com/WallzDev/Code-Portfolio/tree/main/Professional">Professional</a>
+        </code></pre>
+      </div>
+    </div>
+
+    <p>
+        You can check out some other code samples on my Github Code Portfolio! 
+        <a href="https://github.com/WallzDev/Code-Portfolio/tree/main">Here</a>
     </p>
+
+  </div>
 </section>
+
+<script>
+function toggleCard(card) {
+  const allCards = document.querySelectorAll(".code-card");
+
+  allCards.forEach(c => {
+    if (c !== card) {
+      c.classList.remove("active");
+    }
+  });
+
+  card.classList.toggle("active");
+}
+</script>

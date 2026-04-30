@@ -176,3 +176,55 @@ a {
   height: 100%;
   transform-origin: top center;
 }
+
+.code-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.code-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+
+.code-card:hover {
+  transform: translateY(-4px);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.code-subtitle {
+  font-size: 14px;
+  color: #7aa2ff;
+  margin-bottom: 10px;
+}
+
+.code-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+  margin-top: 0;
+}
+
+.code-card.active .code-content {
+  max-height: 300px;
+  margin-top: 15px;
+}
+
+pre {
+  background: #1a1a1a;
+  padding: 15px;
+  border-radius: 8px;
+  overflow-y: auto;
+  max-height: 250px;
+}
+
+code {
+  color: #dcdcdc;
+  font-size: 14px;
+}
