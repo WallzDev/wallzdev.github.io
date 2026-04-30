@@ -41,7 +41,7 @@ body {
 }
 
 section {
-  max-width: 1200px;
+  max-width: 900px;
   margin: auto;
   padding: 100px 24px;
 }
@@ -99,7 +99,7 @@ h2 {
 }
 
 .project-desc {
-  color: #e4e4e4;
+  color: #e9e9e9;
   margin-bottom: 20px;
 }
 
@@ -113,7 +113,7 @@ h2 {
 
 .project-section ul {
   padding-left: 18px;
-  color: #e4e4e4;
+  color: #e9e9e9;
 }
 
 .project-section li {
@@ -161,22 +161,6 @@ a {
   width: 100%;
   height: 800px;
   border: none;
-}
-
-.resume-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.resume-controls button {
-  background: #1f2228;
-  color: white;
-  border: 1px solid rgba(255,255,255,0.1);
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
 }
 
 .resume-wrapper {

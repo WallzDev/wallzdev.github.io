@@ -40,24 +40,3 @@
     Download PDF
   </a>
 </section>
-
-<script>
-    let zoom = 1;
-    const frame = document.getElementById("resumeFrame");
-    const zoomText = document.getElementById("zoomLevel");
-
-    function zoomIn() {
-      zoom += 0.1;
-      applyZoom();
-    }
-
-    function zoomOut() {
-      zoom = Math.max(0.5, zoom - 0.1);
-      applyZoom();
-    }
-
-    function applyZoom() {
-      frame.style.transform = `scale(${zoom})`;
-      zoomText.textContent = Math.round(zoom * 100) + "%";
-    }
-  </script>
