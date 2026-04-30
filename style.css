@@ -138,6 +138,23 @@ a {
   color: #7aa2ff;
 }
 
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 ratio */
+  margin-top: 20px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.video-wrapper iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .resume-btn {
   display: inline-block;
   padding: 10px 16px;
@@ -181,6 +198,7 @@ a {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 20px;
+  align-items: start;
 }
 
 .code-card {
@@ -191,6 +209,7 @@ a {
   cursor: pointer;
   transition: all 0.25s ease;
   overflow: hidden;
+  width: 100%;
 }
 
 .code-card:hover {
@@ -213,11 +232,16 @@ a {
 
 .code-card.active {
   grid-column: 1 / -1;
+  padding: 30px;
 }
 
 .code-card.active .code-content {
   max-height: 500px;
   margin-top: 20px;
+}
+
+.code-card.active pre {
+  max-height: 400px;
 }
 
 .expand-indicator {
