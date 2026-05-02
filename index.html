@@ -42,6 +42,21 @@
     </p>
   </section>
 
+  <section class="mini-projects">
+    <h2>Projects</h2>
+    
+    <div class="carousel">
+
+      <button class="arrow left" onclick="prevSlide()"><</button>
+      <div class="carousel-track">
+        <img src="images/Project1.png" class="slide active">
+        <img src="images/Project2.png" class="slide">
+        <img src="images/Project3.png" class="slide">
+      </div>
+      <button class="arrow right" onclick="nextSlide()">></button>
+    </div>
+  </section>
+
   <section class="contact">
     <h2>Contact Me</h2>
     <p>Email: awallace.dev@gmail.com</p>
@@ -50,4 +65,26 @@
   </section>
 
 </body>
+
 </html>
+
+<script>
+let currentSlide = 0;
+const slides = document.querySelectorAll(".slide");
+
+function showSlide(index) {
+  slides.forEach(slide => slide.classList.remove("active"));
+  slides[index].classList.add("active");
+}
+
+function nextSlide() {
+  currentSlide = (currentSlide + 1) % slides.length;
+  showSlide(currentSlide);
+}
+
+function prevSlide() {
+  currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+  showSlide(currentSlide);
+}
+</script>
+
