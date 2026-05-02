@@ -43,7 +43,7 @@ body {
 section {
   max-width: 900px;
   margin: auto;
-  padding: 70px 24px;
+  padding: 50px 24px;
 }
 
 .hero {
@@ -290,7 +290,6 @@ code {
 
 .carousel-track {
   position: relative;
-  background: red;
   aspect-ratio: 16 / 9;
 }
 
