@@ -290,6 +290,7 @@ code {
 
 .carousel-track {
   position: relative;
+  background: red;
   aspect-ratio: 16 / 9;
 }
 
@@ -305,7 +306,6 @@ code {
 
 .slide.active {
   opacity: 1;
-  z-index: 1;
 }
 
 .arrow {
